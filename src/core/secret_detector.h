@@ -17,7 +17,7 @@ struct ScanResult {
     ScanStatistics statistics;
     bool has_critical = false;
     bool has_high = false;
-    
+
     /**
      * Получить обобщённый статус
      * @return 0 - no issues, 1 - LOW/MEDIUM, 2 - HIGH, 3 - CRITICAL
@@ -34,7 +34,7 @@ struct ScanResult {
      */
 nlohmann::json to_json() const {
     nlohmann::json j;
-    
+
     j["scan_summary"] = {
         {"total_matches", statistics.total_matches_found},
         {"total_files", statistics.total_files_scanned},
@@ -43,14 +43,14 @@ nlohmann::json to_json() const {
         {"has_critical", has_critical},
         {"has_high", has_high}
     };
-    
+
     j["severity_breakdown"] = {
         {"critical", statistics.critical_count},
         {"high", statistics.high_count},
         {"medium", statistics.medium_count},
         {"low", statistics.low_count}
     };
-    
+
     // создать массив результатов
     nlohmann::json matches_array = nlohmann::json::array();
         for (const auto& match : matches) {
@@ -68,7 +68,7 @@ nlohmann::json to_json() const {
             matches_array.push_back(match_obj);
         }
         j["results"] = matches_array;
-        
+
         // добавить статистику
         j["statistics"] = {
             {"total_files_scanned", statistics.total_files_scanned},
@@ -80,7 +80,7 @@ nlohmann::json to_json() const {
             {"scan_time_seconds", statistics.scan_time_seconds},
             {"total_lines_scanned", statistics.total_lines_scanned}
         };
-        
+
         return j;
     }
 
@@ -94,28 +94,28 @@ class SecretDetector {
 public:
     SecretDetector() = default;
     ~SecretDetector() = default;
-    
+
     /**
      * Инициализировать детектор с паттернами
      * @param patterns_config_path Путь до patterns.json
      * @return true если успешно
      */
     bool initialize(const std::string& patterns_config_path);
-    
+
     /**
      * Выполнить полное сканирование
      * @param options Опции сканирования
      * @return Результат сканирования
      */
     ScanResult scan(const ScanOptions& options);
-    
+
     /**
      * Установить callback для прогресса
      */
     void setProgressCallback(std::function<void(size_t, size_t)> callback) {
         progress_callback = callback;
     }
-    
+
 private:
     PatternMatcher matcher;
     std::function<void(size_t, size_t)> progress_callback;

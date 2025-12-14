@@ -16,12 +16,12 @@ void Logger::initialize(const std::string& log_file_path,
                        spdlog::level::level_enum level) {
     try {
         std::vector<spdlog::sink_ptr> sinks;
-        
+
         // Console sink (всегда есть)
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
         console_sink->set_level(level);
         sinks.push_back(console_sink);
-        
+
         // File sink (если указан путь)
         if (!log_file_path.empty()) {
             auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
@@ -29,7 +29,7 @@ void Logger::initialize(const std::string& log_file_path,
             file_sink->set_level(level);
             sinks.push_back(file_sink);
         }
-        
+
         // Создать logger с обоими sinks
         instance = std::make_shared<spdlog::logger>("secret_detector", sinks.begin(), sinks.end());
         instance->set_level(level);

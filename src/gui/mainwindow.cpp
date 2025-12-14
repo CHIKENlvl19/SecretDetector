@@ -53,7 +53,6 @@ MainWindow::~MainWindow() {
 
 }
 
-
 void MainWindow::setupUI() {
     QWidget* central = new QWidget(this);
     setCentralWidget(central);

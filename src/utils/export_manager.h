@@ -14,7 +14,7 @@ class ExportManager {
 public:
     ExportManager() = default;
     ~ExportManager() = default;
-    
+
     /**
      * Экспортировать результаты в JSON
      * @param data JSON данные
@@ -22,7 +22,7 @@ public:
      * @return true если успешно
      */
     static bool exportToJson(const json& data, const std::string& output_path);
-    
+
     /**
      * Экспортировать в CSV
      * @param data JSON данные результатов
@@ -30,7 +30,7 @@ public:
      * @return true если успешно
      */
     static bool exportToCsv(const json& data, const std::string& output_path);
-    
+
     /**
      * Экспортировать в HTML отчет
      * @param data JSON данные результатов
@@ -38,7 +38,7 @@ public:
      * @return true если успешно
      */
     static bool exportToHtml(const json& data, const std::string& output_path);
-    
+
     /**
      * Экспортировать в обычный текст
      * @param data JSON данные результатов

@@ -13,14 +13,14 @@ class ConfigManager {
 public:
     ConfigManager() = default;
     ~ConfigManager() = default;
-    
+
     /**
      * Загрузить JSON конфиг
      * @param config_path Путь до файла
      * @return JSON объект или пустой json если ошибка
      */
     static json loadJsonConfig(const std::string& config_path);
-    
+
     /**
      * Сохранить JSON в файл
      * @param data JSON данные
@@ -28,13 +28,13 @@ public:
      * @return true если успешно
      */
     static bool saveJsonConfig(const json& data, const std::string& output_path);
-    
+
     /**
      * Получить встроенный конфиг по умолчанию
      * @return JSON с дефолтными паттернами
      */
     static json getDefaultPatterns();
-    
+
     /**
      * Проверить, существует ли конфиг файл
      */

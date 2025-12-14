@@ -11,11 +11,11 @@ bool PatternMatcher::loadPatterns(const std::string& config_path) {
             LOG_ERROR_FMT("Cannot open patterns config: {}", config_path);
             return false;
         }
-        
+
         json patterns_json;
         file >> patterns_json;
         file.close();
-        
+
         return loadFromJson(patterns_json);
     } catch (const std::exception& e) {
         LOG_ERROR_FMT("Error loading patterns: {}", e.what());
@@ -26,32 +26,32 @@ bool PatternMatcher::loadPatterns(const std::string& config_path) {
 bool PatternMatcher::loadFromJson(const json& patterns_json) {
     try {
         patterns.clear();
-        
+
         if (!patterns_json.contains("patterns")) {
             LOG_ERROR("JSON does not contain 'patterns' key");
             return false;
         }
-        
+
         for (const auto& [name, pattern_data] : patterns_json["patterns"].items()) {
             try {
                 Pattern pattern;
                 pattern.name = name;
                 pattern.description = pattern_data.value("description", "");
                 pattern.severity = pattern_data.value("severity", "MEDIUM");
-                
+
                 // Загрузить regex если есть
                 if (pattern_data.contains("regex") && !pattern_data["regex"].is_null()) {
                     std::string regex_str = pattern_data["regex"];
-                    
+
                     // убрать (?i) если есть (C++ regex не поддерживает inline flags)
                     if (regex_str.substr(0, 4) == "(?i)") {
                         regex_str = regex_str.substr(4);
                     }
-                    
+
                     // скомпилировать с флагом icase (case-insensitive по умолчанию)
                     pattern.regex = std::regex(regex_str, std::regex::icase | std::regex::ECMAScript);
                 }
-                
+
                 // загрузить настройки энтропии если есть
                 if (pattern_data.contains("use_entropy")) {
                     pattern.use_entropy = pattern_data["use_entropy"];
@@ -59,14 +59,14 @@ bool PatternMatcher::loadFromJson(const json& patterns_json) {
                 if (pattern_data.contains("entropy_threshold")) {
                     pattern.entropy_threshold = pattern_data["entropy_threshold"];
                 }
-                
+
                 patterns.push_back(pattern);
                 LOG_DEBUG_FMT("Loaded pattern: {}", name);
             } catch (const std::regex_error& e) {
                 LOG_WARN_FMT("Invalid regex for pattern {}: {}", name, e.what());
             }
         }
-        
+
         LOG_INFO_FMT("Successfully loaded {} patterns", patterns.size());
         return !patterns.empty();
     } catch (const std::exception& e) {
@@ -83,16 +83,16 @@ std::vector<Match> PatternMatcher::findMatches(const std::string& content,
     std::istringstream iss(content);
     std::string line;
     int line_number = 0;
-    
+
     while (std::getline(iss, line)) {
         line_number++;
-    
+
         // применить каждый паттерн
         for (const auto& pattern : patterns) {
             // regex-based matching
                 std::smatch match;
                 std::string::const_iterator search_start(line.cbegin());
-                
+
                 while (std::regex_search(search_start, line.cend(), match, pattern.regex)) {
                     Match result;
                     result.file_path = file_path;
@@ -102,17 +102,17 @@ std::vector<Match> PatternMatcher::findMatches(const std::string& content,
                     result.matched_text = match[0];
                     result.severity = pattern.severity;
                     result.preview = line;
-                    
+
                     // ограничить вывод "matched_text" для конфиденциальности
                     if (result.matched_text.length() > 50) {
                         result.matched_text = result.matched_text.substr(0, 47) + "...";
                     }
-                    
+
                     // ограничить preview
                     if (result.preview.length() > 100) {
                         result.preview = result.preview.substr(0, 97) + "...";
                     }
-                    
+
                     matches.push_back(result);
                     search_start = match[0].second;
                 }
@@ -125,7 +125,7 @@ std::vector<Match> PatternMatcher::findMatches(const std::string& content,
                 std::istringstream word_iss(line);
                 std::string word;
                 int column = 0;
-                
+
                 while (word_iss >> word) {
                     column = line.find(word, column);
                     if (column != std::string::npos) {
@@ -151,7 +151,7 @@ std::vector<Match> PatternMatcher::findMatches(const std::string& content,
             }
         }
     }
-    
+
     return matches;
 }
 

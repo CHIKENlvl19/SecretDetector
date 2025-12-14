@@ -12,7 +12,7 @@ std::string FileUtils::readFile(const std::string& file_path) {
         if (!file.is_open()) {
             return "";
         }
-        
+
         std::stringstream buffer;
         buffer << file.rdbuf();
         return buffer.str();
@@ -27,7 +27,7 @@ bool FileUtils::writeFile(const std::string& file_path, const std::string& conte
         if (!file.is_open()) {
             return false;
         }
-        
+
         file << content;
         file.close();
         return true;
@@ -89,7 +89,7 @@ std::string FileUtils::normalizePath(const std::string& path) {
 std::vector<std::string> FileUtils::listFilesInDirectory(const std::string& dir_path,
                                                          bool recursive) {
     std::vector<std::string> files;
-    
+
     try {
         if (recursive) {
             for (const auto& entry : fs::recursive_directory_iterator(dir_path)) {
@@ -107,7 +107,7 @@ std::vector<std::string> FileUtils::listFilesInDirectory(const std::string& dir_
     } catch (const std::exception&) {
         // Ошибка при чтении директории
     }
-    
+
     return files;
 }
 

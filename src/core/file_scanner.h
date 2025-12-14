@@ -41,14 +41,14 @@ class FileScanner {
 public:
     explicit FileScanner(ScanOptions options);
     ~FileScanner() = default;
-    
+
     /**
      * Начать сканирование директории
      * @param matcher Объект PatternMatcher с загруженными паттернами
      * @return Вектор найденных совпадений
      */
     std::vector<Match> scan(const PatternMatcher& matcher);
-    
+
     /**
      * Сканировать отдельный файл
      * @param file_path Путь до файла
@@ -62,7 +62,7 @@ public:
      * Получить статистику последнего сканирования
      */
     const ScanStatistics& getStatistics() const { return statistics; }
-    
+
     /**
      * Установить callback для прогресса
      * @param callback Функция: (current_file_index, total_files)
@@ -70,27 +70,27 @@ public:
     void setProgressCallback(std::function<void(size_t, size_t)> callback) {
         progress_callback = callback;
     }
-    
+
 private:
     ScanOptions options;
     mutable ScanStatistics statistics;
     std::function<void(size_t, size_t)> progress_callback;
-    
+
     /**
      * Получить все файлы для сканирования
      */
     std::vector<std::string> getFilesToScan();
-    
+
     /**
      * Проверить, нужно ли сканировать файл (по расширению, исключениям и т.д.)
      */
     bool shouldScanFile(const std::string& file_path) const;
-    
+
     /**
      * Загрузить .gitignore паттерны
      */
     std::vector<std::string> loadGitignorePatterns();
-    
+
     /**
      * Проверить, игнорируется ли файл по gitignore
      */

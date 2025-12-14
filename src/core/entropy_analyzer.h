@@ -11,7 +11,7 @@ class EntropyAnalyzer {
 public:
     EntropyAnalyzer() = default;
     ~EntropyAnalyzer() = default;
-    
+
     /**
      * Рассчитать Shannon entropy для строки
      * Формула: H(X) = -sum(p(x) * log2(p(x)))
@@ -24,7 +24,7 @@ public:
      *         - 6-8: очень высокая энтропия (явно случайные данные)
      */
     static double calculateEntropy(const std::string& str);
-    
+
     /**
      * Проверить, имеет ли строка высокую энтропию
      * @param str Анализируемая строка
@@ -32,7 +32,7 @@ public:
      * @return true если энтропия >= threshold
      */
     static bool isHighEntropy(const std::string& str, double threshold = 4.5);
-    
+
     /**
      * Получить статистику символов в строке
      * @param str Анализируемая строка

@@ -29,7 +29,7 @@ private slots:
     void onStopClicked();
     void onClearClicked();
     void onExportClicked();
-    
+
     void onScanProgress(int current, int total);
     void onScanFinished(const ScanResult& result);
     void onScanError(const QString& error);
@@ -40,34 +40,34 @@ private:
     void createToolBar();
     void createCentralWidget();
     void createStatusBar();
-    
+
     void loadResults(const ScanResult& result);
     void updateStatistics(const ScanStatistics& stats);
-    
+
     // UI Components
     QLineEdit* pathEdit;
     QPushButton* browseBtn;
     QPushButton* scanBtn;
     QPushButton* stopBtn;
     QPushButton* clearBtn;
-    
+
     QLineEdit* outputEdit;
     QPushButton* outputBrowseBtn;
-    
+
     QCheckBox* recursiveCheck;
     QCheckBox* respectGitignoreCheck;
     QCheckBox* strictModeCheck;
-    
+
     QComboBox* formatCombo;
     QLineEdit* excludeEdit;
     QLineEdit* includeExtEdit;
-    
+
     QTableWidget* resultsTable;
     QProgressBar* progressBar;
     QTextEdit* logText;
-    
+
     QLabel* statsLabel;
-    
+
     QAction* toolbarScanAction;
     QAction* toolbarStopAction;
     QAction* toolbarClearAction;
@@ -105,7 +105,7 @@ private:
     QPushButton* scanBtn;
     QPushButton* stopBtn;
     QPushButton* clearBtn;
-    
+
     QAction* toolbarScanAction;
     QAction* toolbarStopAction;
     QAction* toolbarClearAction;

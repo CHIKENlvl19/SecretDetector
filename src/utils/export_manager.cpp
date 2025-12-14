@@ -11,10 +11,10 @@ bool ExportManager::exportToJson(const json& data, const std::string& output_pat
             LOG_ERROR_FMT("Cannot open file for writing: {}", output_path);
             return false;
         }
-        
+
         file << data.dump(2) << std::endl;
         file.close();
-        
+
         LOG_INFO_FMT("Exported to JSON: {}", output_path);
         return true;
     } catch (const std::exception& e) {
@@ -30,10 +30,10 @@ bool ExportManager::exportToCsv(const json& data, const std::string& output_path
             LOG_ERROR_FMT("Cannot open file for writing: {}", output_path);
             return false;
         }
-        
+
         // CSV header
         file << "File,Line,Column,Pattern,Severity,Preview\n";
-        
+
         // CSV body
         if (data.contains("results") && data["results"].is_array()) {
             for (const auto& result : data["results"]) {
@@ -42,13 +42,13 @@ bool ExportManager::exportToCsv(const json& data, const std::string& output_path
                 std::string pattern_val = result.value("pattern", "");
                 std::string severity_val = result.value("severity", "");
                 std::string preview_val = result.value("preview", "");
-                
+
                 // Replace quotes and newlines
                 for (auto& c : preview_val) {
                     if (c == '"') c = '\'';
                     if (c == '\n' || c == '\r') c = ' ';
                 }
-                
+
                 file << "\"" << file_val << "\","
                      << result.value("line", 0) << ","
                      << result.value("column", 0) << ","
@@ -57,7 +57,7 @@ bool ExportManager::exportToCsv(const json& data, const std::string& output_path
                      << "\"" << preview_val << "\"\n";
             }
         }
-        
+
         file.close();
         LOG_INFO_FMT("Exported to CSV: {}", output_path);
         return true;
@@ -74,7 +74,7 @@ bool ExportManager::exportToHtml(const json& data, const std::string& output_pat
             LOG_ERROR_FMT("Cannot open file for writing: {}", output_path);
             return false;
         }
-        
+
         // HTML header
         file << R"(<!DOCTYPE html>
 <html>
@@ -103,7 +103,7 @@ bool ExportManager::exportToHtml(const json& data, const std::string& output_pat
 <body>
     <h1>🔍 Secret Detector Report</h1>
 )";
-        
+
         // Summary
         file << "    <div class=\"summary\">\n";
         if (data.contains("statistics")) {
@@ -123,7 +123,7 @@ bool ExportManager::exportToHtml(const json& data, const std::string& output_pat
             file << "        </ul>\n";
         }
         file << "    </div>\n";
-        
+
         // Results
         if (data.contains("results") && data["results"].is_array()) {
             file << "    <h2>Findings</h2>\n";
@@ -132,7 +132,7 @@ bool ExportManager::exportToHtml(const json& data, const std::string& output_pat
                 std::string severity_lower = severity;
                 std::transform(severity_lower.begin(), severity_lower.end(), 
                              severity_lower.begin(), ::tolower);
-                
+
                 file << "    <div class=\"result-item " << severity_lower << "\">\n";
                 file << "        <strong>" << severity << " - " << result.value("pattern", "") << "</strong><br>\n";
                 file << "        <small>File: " << result.value("file", "") << ":"
@@ -141,11 +141,11 @@ bool ExportManager::exportToHtml(const json& data, const std::string& output_pat
                 file << "    </div>\n";
             }
         }
-        
+
         file << R"(
 </body>
 </html>)";
-        
+
         file.close();
         LOG_INFO_FMT("Exported to HTML: {}", output_path);
         return true;
@@ -162,10 +162,10 @@ bool ExportManager::exportToText(const json& data, const std::string& output_pat
             LOG_ERROR_FMT("Cannot open file for writing: {}", output_path);
             return false;
         }
-        
+
         file << "Secret Detector Report\n";
         file << "======================\n\n";
-        
+
         // Statistics
         if (data.contains("statistics")) {
             file << "STATISTICS:\n";
@@ -178,7 +178,7 @@ bool ExportManager::exportToText(const json& data, const std::string& output_pat
             file << "  LOW: " << stats.value("low_count", 0) << "\n";
             file << "  Scan time: " << stats.value("scan_time_seconds", 0.0) << "s\n\n";
         }
-        
+
         // Results
         if (data.contains("results") && data["results"].is_array()) {
             file << "FINDINGS:\n";
@@ -191,7 +191,7 @@ bool ExportManager::exportToText(const json& data, const std::string& output_pat
                 file << "  Preview: " << result.value("preview", "") << "\n\n";
             }
         }
-        
+
         file.close();
         LOG_INFO_FMT("Exported to Text: {}", output_path);
         return true;

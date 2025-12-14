@@ -68,12 +68,12 @@ public:
      * @return true если успешно, false если ошибка
      */
     bool loadPatterns(const std::string& config_path);
-    
+
     /**
      * Загрузить паттерны из JSON объекта
      */
     bool loadFromJson(const json& patterns_json);
-    
+
     /**
      * Найти все совпадения в тексте
      * @param content Содержимое файла
@@ -87,17 +87,17 @@ public:
      * Добавить кастомный паттерн
      */
     void addPattern(const Pattern& pattern);
-    
+
     /**
      * Получить количество загруженных паттернов
      */
     size_t getPatternCount() const { return patterns.size(); }
-    
+
     /**
      * Получить все паттерны
      */
     const std::vector<Pattern>& getPatterns() const { return patterns; }
-    
+
 private:
     std::vector<Pattern> patterns;
 };
