@@ -138,28 +138,66 @@ std::vector<std::string> FileScanner::getFilesToScan() {
 
 bool FileScanner::shouldScanFile(const std::string& file_path) const {
     std::string extension = FileUtils::getFileExtension(file_path);
-
-    // пропустить бинарные файлы и исполняемые
-    if (extension.empty() || extension == ".exe" || extension == ".dll" || extension == ".so" ||
-        extension == ".o" || extension == ".a" || extension == ".bin" || extension == ".out") {
+    
+    // список расширений для пропуска
+    static const std::vector<std::string> skip_extensions = {
+        // исполняемые и библиотеки
+        ".exe", ".dll", ".so", ".dylib", ".a", ".o", ".obj", ".lib", ".bin", ".out",
+        
+        // архивы
+        ".zip", ".tar", ".gz", ".bz2", ".7z", ".rar", ".xz", ".tgz",
+        
+        // картиночки
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".svg", ".webp",
+        ".tiff", ".tif", ".psd", ".ai", ".eps", ".raw",
+        
+        // видосики
+        ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v",
+        ".mpg", ".mpeg", ".3gp",
+        
+        // аудио
+        ".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".opus",
+        
+        // документы (офисные форматы - бинарные оказывается)
+        ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+        ".odt", ".ods", ".odp", ".pages", ".numbers", ".key",
+        
+        // шрифты
+        ".ttf", ".otf", ".woff", ".woff2", ".eot",
+        
+        // другие бинарные
+        ".pyc", ".pyo", ".class", ".jar", ".war", ".ear",
+        ".deb", ".rpm", ".dmg", ".pkg", ".msi", ".appimage",
+        ".iso", ".img", ".dat",
+        ".db", ".sqlite", ".sqlite3"
+    };
+    
+    // преобразовать расширение в нижний регистр
+    std::string lower_ext = extension;
+    std::transform(lower_ext.begin(), lower_ext.end(), lower_ext.begin(), ::tolower);
+    
+    // проверить, есть ли расширение в списке пропускаемых
+    for (const auto& skip_ext : skip_extensions) {
+        if (lower_ext == skip_ext) {
+            LOG_DEBUG_FMT("Skipping binary/media file: {}", file_path);
+            return false;
+        }
+    }
+    
+    // пропустить файлы без расширения (часто бинарные)
+    if (extension.empty()) {
+        LOG_DEBUG_FMT("Skipping file without extension: {}", file_path);
         return false;
     }
-
-    // пропустить медиа файлы
-    if (extension == ".jpg" || extension == ".png" || extension == ".gif" || extension == ".mp4" ||
-        extension == ".mp3" || extension == ".pdf" || extension == ".zip" || extension == ".tar" ||
-        extension == ".gz" || extension == ".rar") {
-        return false;
-    }
-
+    
     // проверить исключения пользователя
     for (const auto& exclude : options.exclude_patterns) {
         if (file_path.find(exclude) != std::string::npos) {
             return false;
         }
     }
-
-    // если указаны расширения для включения
+    
+    // псли указаны расширения для включения
     if (!options.include_extensions.empty()) {
         bool found = false;
         for (const auto& ext : options.include_extensions) {

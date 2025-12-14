@@ -145,9 +145,9 @@ install(FILES README.md LICENSE
 # SUMMARY
 
 message(STATUS "")
-message(STATUS ==========")
+message(STATUS "==========")
 message(STATUS "Secret Detector Configuration Summary")
-message(STATUS ==========")
+message(STATUS "==========")
 message(STATUS "Version:          ${SECRET_DETECTOR_VERSION}")
 message(STATUS "C++ Standard:     ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build Type:       ${CMAKE_BUILD_TYPE}")
@@ -162,5 +162,5 @@ message(STATUS "  spdlog:         ${spdlog_FOUND}")
 message(STATUS "  Qt5:            ${Qt5_FOUND}")
 message(STATUS "  Boost:          ${Boost_FOUND}")
 message(STATUS "  Threads:        ${Threads_FOUND}")
-message(STATUS ==========")
+message(STATUS "==========")
 message(STATUS "")

@@ -20,7 +20,12 @@ MainWindow::MainWindow(QWidget *parent)
     
     setupUI();
 
-    excludeEdit->setText("build, config, .git, node_modules, __pycache__, .venv");
+    // excludeEdit->setText("build, config, .git, node_modules, __pycache__, .venv");
+
+    excludeEdit->setText("build, config, .git, node_modules, __pycache__, .venv, .pdf, .mp4, .djvu, .docx, .xlsx, .pptx, .odt, .zip, .tar, .gz, .rar, .7z, .png, .jpg, .jpeg, .gif, .bmp, .mp3, .wav, .avi, .mkv, .iso");
+
+    // excludeEdit->setText("build, config, .git, node_modules, __pycache__, .venv, pdf, mp4,
+    //     djvu, docx, xlsx, pptx, odt, zip, tar, gz, rar, 7z, png, jpg, jpeg, gif, bmp, mp3, wav, avi, mkv");
 
     createMenuBar();
     createToolBar();
