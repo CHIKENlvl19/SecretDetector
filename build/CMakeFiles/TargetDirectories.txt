@@ -1,0 +1,10 @@
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/secret_detector.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/secret_detector_gui.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/edit_cache.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/rebuild_cache.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/list_install_components.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/install.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/install/local.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/install/strip.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/secret_detector_gui_autogen_timestamp_deps.dir
+/home/berdnikov/Desktop/Учеба/Прога/3 семестр/Курсач/build/CMakeFiles/secret_detector_gui_autogen.dir

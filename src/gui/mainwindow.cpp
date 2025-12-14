@@ -1,0 +1,601 @@
+#include "mainwindow.h"
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QGroupBox>
+#include <QFileDialog>
+#include <QMenuBar>
+#include <QToolBar>
+#include <QStatusBar>
+#include <QMessageBox>
+#include <QHeaderView>
+#include <QApplication>
+#include <QSplitter>
+#include "utils/export_manager.h"
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), scanThread(nullptr), scanning(false) {
+    
+    setWindowTitle("Secret Detector");
+    resize(1200, 800);
+    
+    setupUI();
+
+    excludeEdit->setText("build, config, .git, node_modules, __pycache__, .venv");
+
+    createMenuBar();
+    createToolBar();
+    createStatusBar();
+    
+    // попробовать несколько путей
+    std::vector<std::string> config_paths = {
+        "./config/patterns.json",
+        "../config/patterns.json",
+        "/etc/secret_detector/patterns.json"
+    };
+    
+    bool loaded = false;
+    for (const auto& path : config_paths) {
+        if (detector.initialize(path)) {
+            logText->append(QString("[INFO] Loaded config from: %1").arg(QString::fromStdString(path)));
+            loaded = true;
+            break;
+        }
+    }
+    
+    if (!loaded) {
+        // использовать дефолтные паттерны
+        detector.initialize("");
+        logText->append("[WARNING] Using default patterns");
+    }
+}
+
+MainWindow::~MainWindow() {
+
+}
+
+
+void MainWindow::setupUI() {
+    QWidget* central = new QWidget(this);
+    setCentralWidget(central);
+    
+    QVBoxLayout* mainLayout = new QVBoxLayout(central);
+    
+    // секция выбора пути
+    QGroupBox* pathGroup = new QGroupBox("Scan Target", this);
+    QHBoxLayout* pathLayout = new QHBoxLayout(pathGroup);
+    
+    pathEdit = new QLineEdit(this);
+    pathEdit->setPlaceholderText("Select file or directory to scan...");
+    
+    browseBtn = new QPushButton("Browse...", this);
+    connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
+    
+    pathLayout->addWidget(new QLabel("Path:", this));
+    pathLayout->addWidget(pathEdit, 1);
+    pathLayout->addWidget(browseBtn);
+    
+    mainLayout->addWidget(pathGroup);
+    
+    // секция опций
+    QGroupBox* optionsGroup = new QGroupBox("Scan Options", this);
+    QVBoxLayout* optionsLayout = new QVBoxLayout(optionsGroup);
+    
+    // чекбоксы
+    QHBoxLayout* checkLayout = new QHBoxLayout();
+    recursiveCheck = new QCheckBox("Recursive scan", this);
+    recursiveCheck->setChecked(true);
+    
+    respectGitignoreCheck = new QCheckBox("Respect .gitignore", this);
+    respectGitignoreCheck->setChecked(true);
+    
+    strictModeCheck = new QCheckBox("Strict mode", this);
+    strictModeCheck->setToolTip("Fail on any match (not just CRITICAL)");
+    
+    checkLayout->addWidget(recursiveCheck);
+    checkLayout->addWidget(respectGitignoreCheck);
+    checkLayout->addWidget(strictModeCheck);
+    checkLayout->addStretch();
+    
+    optionsLayout->addLayout(checkLayout);
+    
+    // фильтры
+    QHBoxLayout* filterLayout = new QHBoxLayout();
+    
+    excludeEdit = new QLineEdit(this);
+    excludeEdit->setPlaceholderText("Exclude patterns (comma-separated): build, .git, node_modules");
+    
+    includeExtEdit = new QLineEdit(this);
+    includeExtEdit->setPlaceholderText("Include extensions (comma-separated): cpp, h, py");
+    
+    filterLayout->addWidget(new QLabel("Exclude:", this));
+    filterLayout->addWidget(excludeEdit, 1);
+    filterLayout->addWidget(new QLabel("Include ext:", this));
+    filterLayout->addWidget(includeExtEdit, 1);
+    
+    optionsLayout->addLayout(filterLayout);
+    
+    mainLayout->addWidget(optionsGroup);
+    
+    // секция вывода
+    QGroupBox* outputGroup = new QGroupBox("Output Options", this);
+    QHBoxLayout* outputLayout = new QHBoxLayout(outputGroup);
+    
+    outputEdit = new QLineEdit(this);
+    outputEdit->setPlaceholderText("Output directory for reports (optional)");
+    
+    outputBrowseBtn = new QPushButton("Browse...", this);
+    connect(outputBrowseBtn, &QPushButton::clicked, this, &MainWindow::onOutputBrowseClicked);
+    
+    formatCombo = new QComboBox(this);
+    formatCombo->addItems({"Text", "JSON", "CSV", "HTML"});
+    
+    QComboBox* severityFilter = new QComboBox(this);
+    severityFilter->addItems({"All", "CRITICAL", "HIGH", "MEDIUM", "LOW"});
+    severityFilter->setToolTip("Filter results by severity");
+
+    outputLayout->addWidget(new QLabel("Show:", this));
+    outputLayout->addWidget(severityFilter);
+
+
+    outputLayout->addWidget(new QLabel("Output:", this));
+    outputLayout->addWidget(outputEdit, 1);
+    outputLayout->addWidget(outputBrowseBtn);
+    outputLayout->addWidget(new QLabel("Format:", this));
+    outputLayout->addWidget(formatCombo);
+    
+    mainLayout->addWidget(outputGroup);
+    
+    // кнопки действий
+    QHBoxLayout* buttonLayout = new QHBoxLayout();
+    
+    scanBtn = new QPushButton("Start Scan", this);
+    scanBtn->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 8px; }");
+    connect(scanBtn, &QPushButton::clicked, this, &MainWindow::onScanClicked);
+    
+    stopBtn = new QPushButton("Stop", this);
+    stopBtn->setEnabled(false);
+    connect(stopBtn, &QPushButton::clicked, this, &MainWindow::onStopClicked);
+    
+    clearBtn = new QPushButton("Clear Results", this);
+    connect(clearBtn, &QPushButton::clicked, this, &MainWindow::onClearClicked);
+    
+    QPushButton* exportBtn = new QPushButton("Export Report", this);
+    connect(exportBtn, &QPushButton::clicked, this, &MainWindow::onExportClicked);
+    
+    buttonLayout->addWidget(scanBtn);
+    buttonLayout->addWidget(stopBtn);
+    buttonLayout->addWidget(clearBtn);
+    buttonLayout->addWidget(exportBtn);
+    buttonLayout->addStretch();
+    
+    mainLayout->addLayout(buttonLayout);
+    
+    // progress Bar
+    progressBar = new QProgressBar(this);
+    progressBar->setVisible(false);
+    mainLayout->addWidget(progressBar);
+    
+    // splitter с результатами и логом
+    QSplitter* splitter = new QSplitter(Qt::Vertical, this);
+    
+    // таблица результатов
+    resultsTable = new QTableWidget(this);
+    resultsTable->setColumnCount(6);
+    resultsTable->setHorizontalHeaderLabels({"File", "Line", "Severity", "Pattern", "Match", "Preview"});
+    resultsTable->horizontalHeader()->setStretchLastSection(true);
+    resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    resultsTable->setAlternatingRowColors(true);
+    
+    splitter->addWidget(resultsTable);
+    
+    // лог
+    logText = new QTextEdit(this);
+    logText->setReadOnly(true);
+    logText->setMaximumHeight(150);
+    logText->setPlaceholderText("Scan logs will appear here...");
+    
+    splitter->addWidget(logText);
+    splitter->setStretchFactor(0, 3);
+    splitter->setStretchFactor(1, 1);
+    
+    mainLayout->addWidget(splitter, 1);
+}
+
+void MainWindow::createMenuBar() {
+    QMenu* fileMenu = menuBar()->addMenu("&File");
+    
+    QAction* openAction = fileMenu->addAction("&Open Folder...");
+    connect(openAction, &QAction::triggered, this, &MainWindow::onBrowseClicked);
+    
+    QAction* exportAction = fileMenu->addAction("&Export Report...");
+    connect(exportAction, &QAction::triggered, this, &MainWindow::onExportClicked);
+    
+    fileMenu->addSeparator();
+    
+    QAction* exitAction = fileMenu->addAction("E&xit");
+    exitAction->setShortcut(QKeySequence::Quit);
+    connect(exitAction, &QAction::triggered, qApp, &QApplication::quit);
+    
+    QMenu* helpMenu = menuBar()->addMenu("&Help");
+    QAction* aboutAction = helpMenu->addAction("&About");
+    connect(aboutAction, &QAction::triggered, [this]() {
+        QMessageBox::about(this, "About Secret Detector",
+            "Secret Detector v1.0.0\n\n"
+            "Find secrets in your code: API keys, tokens, passwords, and more.\n\n"
+            "Built with C++17 and Qt5");
+    });
+}
+
+void MainWindow::createToolBar() {
+    QToolBar* toolbar = addToolBar("Main Toolbar");
+    toolbar->setMovable(false);
+    
+    toolbarScanAction = toolbar->addAction("▶ Scan");
+    toolbarScanAction->setEnabled(true);  // Изначально включена
+    connect(toolbarScanAction, &QAction::triggered, this, &MainWindow::onScanClicked);
+    
+    toolbarStopAction = toolbar->addAction("⏹ Stop");
+    toolbarStopAction->setEnabled(false);  // Изначально отключена
+    connect(toolbarStopAction, &QAction::triggered, this, &MainWindow::onStopClicked);
+    
+    toolbar->addSeparator();
+    
+    toolbarClearAction = toolbar->addAction("🗑 Clear");
+    connect(toolbarClearAction, &QAction::triggered, this, &MainWindow::onClearClicked);
+}
+
+
+void MainWindow::createStatusBar() {
+    statsLabel = new QLabel("Ready", this);
+    statusBar()->addPermanentWidget(statsLabel);
+    statusBar()->showMessage("Ready to scan");
+}
+
+void MainWindow::onBrowseClicked() {
+    QString dir = QFileDialog::getExistingDirectory(this, "Select Directory to Scan",
+        pathEdit->text().isEmpty() ? QDir::homePath() : pathEdit->text());
+    
+    if (!dir.isEmpty()) {
+        pathEdit->setText(dir);
+    }
+}
+
+void MainWindow::onOutputBrowseClicked() {
+    QString dir = QFileDialog::getExistingDirectory(this, "Select Output Directory",
+        outputEdit->text().isEmpty() ? QDir::homePath() : outputEdit->text());
+    
+    if (!dir.isEmpty()) {
+        outputEdit->setText(dir);
+    }
+}
+
+void MainWindow::onScanClicked() {
+    if (pathEdit->text().isEmpty()) {
+        QMessageBox::warning(this, "No Path Selected", "Please select a file or directory to scan.");
+        return;
+    }
+    
+    // КРИТИЧЕСКАЯ ПРОВЕРКА - ПРЕДОТВРАЩАЕТ КРАШ, НЕ ДАЙ БОГ НЕ СРАБОТАЕТ, Я НЕ ЗНАЮ УЖЕ ЧТО С СОБОЙ СДЕЛАЮ
+    if (scanThread) {
+        if (scanThread->isRunning()) {
+            QMessageBox::warning(this, "Scan in Progress", 
+                "Please wait for the current scan to finish.");
+            return;
+        }
+        // cтарый поток есть, но не запущен - обнулить обнуляй типа ыыы хвхахв
+        scanThread = nullptr;
+    }
+    
+    // подготовить опции
+    ScanOptions options;
+    options.scan_path = pathEdit->text().toStdString();
+    options.recursive = recursiveCheck->isChecked();
+    options.respect_gitignore = respectGitignoreCheck->isChecked();
+    options.num_threads = 0;
+    
+    // exclude patterns
+    QString excludeStr = excludeEdit->text().trimmed();
+    if (!excludeStr.isEmpty()) {
+        QStringList excludeList = excludeStr.split(',', Qt::SkipEmptyParts);
+        for (const QString& pattern : excludeList) {
+            options.exclude_patterns.push_back(pattern.trimmed().toStdString());
+        }
+    }
+    
+    // include extensions
+    QString includeStr = includeExtEdit->text().trimmed();
+    if (!includeStr.isEmpty()) {
+        QStringList includeList = includeStr.split(',', Qt::SkipEmptyParts);
+        for (const QString& ext : includeList) {
+            options.include_extensions.push_back(ext.trimmed().toStdString());
+        }
+    }
+    
+    // ОТКЛЮЧИТЬ ВСЕ КНОПКИ СКАНИРОВАНИЯ
+    scanning = true;
+    scanBtn->setEnabled(false);
+    stopBtn->setEnabled(true);
+    
+    // КРИТИЧЕСКИ ВАЖНО - ОТКЛЮЧИТЬ TOOLBAR КНОПКИ А ТО ОПЯТЬ КРАШНЕТСЯ ВСЁ НУ СКОКА МОЖНО
+    toolbarScanAction->setEnabled(false);
+    toolbarStopAction->setEnabled(true);
+    
+    progressBar->setVisible(true);
+    progressBar->setMaximum(100);
+    progressBar->setValue(0);
+    
+    logText->append("[INFO] Starting scan...");
+    statusBar()->showMessage("Scanning...");
+    
+    scanThread = new ScanThread(&detector, options);
+    connect(scanThread, &ScanThread::progress, this, &MainWindow::onScanProgress);
+    connect(scanThread, &ScanThread::finished, this, &MainWindow::onScanFinished);
+    connect(scanThread, &ScanThread::error, this, &MainWindow::onScanError);
+    connect(scanThread, &QThread::finished, scanThread, &QObject::deleteLater);
+    
+    scanThread->start();
+}
+
+
+void MainWindow::onStopClicked() {
+    if (scanThread && scanThread->isRunning()) {
+        disconnect(scanThread, nullptr, this, nullptr);
+        
+        scanThread->quit();
+        if (!scanThread->wait(1000)) {
+            scanThread->terminate();
+            scanThread->wait();
+        }
+        
+        logText->append("[WARNING] Scan stopped by user");
+        statusBar()->showMessage("Scan stopped");
+        
+        scanning = false;
+        scanBtn->setEnabled(true);
+        stopBtn->setEnabled(false);
+        
+        // ВКЛЮЧИТЬ TOOLBAR КНОПКИ А ТО Ж НЕ ВИДНО ИХ БУДЕТ
+        toolbarScanAction->setEnabled(true);
+        toolbarStopAction->setEnabled(false);
+        
+        progressBar->setVisible(false);
+        
+        scanThread = nullptr;
+    }
+}
+
+
+
+void MainWindow::onClearClicked() {
+    resultsTable->setRowCount(0);
+    logText->clear();
+    lastResult = ScanResult();
+    statsLabel->setText("Ready");
+    statusBar()->showMessage("Results cleared");
+}
+
+void MainWindow::onExportClicked() {
+    if (lastResult.matches.empty()) {
+        QMessageBox::information(this, "No Results", "No scan results to export.");
+        return;
+    }
+    
+    QString format = formatCombo->currentText().toLower();
+    QString filter;
+    QString defaultExt;
+    
+    if (format == "json") {
+        filter = "JSON Files (*.json)";
+        defaultExt = ".json";
+    } else if (format == "csv") {
+        filter = "CSV Files (*.csv)";
+        defaultExt = ".csv";
+    } else if (format == "html") {
+        filter = "HTML Files (*.html)";
+        defaultExt = ".html";
+    } else {
+        filter = "Text Files (*.txt)";
+        defaultExt = ".txt";
+    }
+    
+    // диалог сохранения
+    QString fileName = QFileDialog::getSaveFileName(
+        this, 
+        "Export Report", 
+        QDir::homePath() + "/secret_detector_report" + defaultExt,
+        filter
+    );
+    
+    if (fileName.isEmpty()) {
+        return; // пользователь отменил
+    }
+    
+    // убедиться что есть расширение
+    if (!fileName.endsWith(defaultExt)) {
+        fileName += defaultExt;
+    }
+    
+    try {
+        std::string filePathStr = fileName.toStdString();
+        nlohmann::json data = lastResult.to_json();
+        
+        bool success = false;
+        
+        // экспорт в зависимости от формата (статические методы)
+        if (format == "json") {
+            success = ExportManager::exportToJson(data, filePathStr);
+        } else if (format == "csv") {
+            success = ExportManager::exportToCsv(data, filePathStr);
+        } else if (format == "html") {
+            success = ExportManager::exportToHtml(data, filePathStr);
+        } else {
+            success = ExportManager::exportToText(data, filePathStr);
+        }
+        
+        if (success) {
+            logText->append("[INFO] Exported to: " + fileName);
+            statusBar()->showMessage("Report exported successfully", 3000);
+            
+            QMessageBox::information(this, "Export Successful", 
+                QString("Report exported to:\n%1\n\nFormat: %2\nMatches: %3")
+                .arg(fileName)
+                .arg(format.toUpper())
+                .arg(lastResult.matches.size()));
+        } else {
+            throw std::runtime_error("Export failed");
+        }
+        
+    } catch (const std::exception& e) {
+        logText->append(QString("[ERROR] Export failed: %1").arg(e.what()));
+        QMessageBox::critical(this, "Export Failed", 
+            QString("Failed to export report:\n%1").arg(e.what()));
+    }
+}
+
+
+
+void MainWindow::onScanProgress(int current, int total) {
+    int percent = (current * 100) / total;
+    progressBar->setValue(percent);
+    statusBar()->showMessage(QString("Scanning... %1/%2 files (%3%)")
+        .arg(current).arg(total).arg(percent));
+}
+
+void MainWindow::onScanFinished(const ScanResult& result) {
+    lastResult = result;
+    scanning = false;
+    
+    // ВКЛЮЧИТЬ КНОПКИ ОБРАТНО НУ КОНЕЧНО МЫ ЖЕ ИХ ВЫРУБИЛИ
+    scanBtn->setEnabled(true);
+    stopBtn->setEnabled(false);
+    
+    // КРИТИЧЕСКИ ВАЖНО - ВКЛЮЧИТЬ TOOLBAR КНОПКИ ААААААААААААААА
+    toolbarScanAction->setEnabled(true);
+    toolbarStopAction->setEnabled(false);
+    
+    progressBar->setVisible(false);
+    
+    logText->append(QString("[INFO] Scan completed in %1 seconds")
+        .arg(result.statistics.scan_time_seconds, 0, 'f', 2));
+    
+    loadResults(result);
+    updateStatistics(result.statistics);
+    
+    // КРИТИЧЕСКИ ВАЖНО - ОБНУЛИТЬ УКАЗАТЕЛЬ НУ ЭТО ТОЖЕ ТИПА ЛОМАЕТ 
+    scanThread = nullptr;
+    
+    // показать уведомление посмотри тебе пришло важное сообщение
+    if (result.has_critical) {
+        QMessageBox::critical(this, "Critical Secrets Found",
+            QString("Found %1 CRITICAL secrets!\nPlease review the results.")
+            .arg(result.statistics.critical_count));
+    } else if (result.statistics.total_matches_found > 0) {
+        QMessageBox::warning(this, "Secrets Found",
+            QString("Found %1 potential secrets.\nPlease review the results.")
+            .arg(result.statistics.total_matches_found));
+    } else {
+        QMessageBox::information(this, "Scan Complete", "No secrets detected!");
+    }
+}
+
+
+void MainWindow::onScanError(const QString& error) {
+    scanning = false;
+    
+    scanBtn->setEnabled(true);
+    stopBtn->setEnabled(false);
+    
+    toolbarScanAction->setEnabled(true);
+    toolbarStopAction->setEnabled(false);
+    
+    progressBar->setVisible(false);
+    
+    logText->append("[ERROR] " + error);
+    QMessageBox::critical(this, "Scan Error", "Error during scan:\n" + error);
+    
+    scanThread = nullptr;
+}
+
+void MainWindow::loadResults(const ScanResult& result) {
+    resultsTable->setRowCount(0);
+    
+    // ограничить до 1000 результатов для UI
+    size_t max_display = 1000;
+    size_t display_count = std::min(result.matches.size(), max_display);
+    
+    if (result.matches.size() > max_display) {
+        logText->append(QString("[WARNING] Too many results (%1). Showing first %2")
+            .arg(result.matches.size()).arg(max_display));
+    }
+    
+    resultsTable->setUpdatesEnabled(false);  // отключить обновление для скорости, а то оператива дорогая щас
+    
+    for (size_t i = 0; i < display_count; ++i) {
+        const Match& match = result.matches[i];
+        
+        int row = resultsTable->rowCount();
+        resultsTable->insertRow(row);
+        
+        // безопасное создание items
+        auto fileItem = new QTableWidgetItem(QString::fromStdString(match.file_path));
+        auto lineItem = new QTableWidgetItem(QString::number(match.line_number));
+        auto severityItem = new QTableWidgetItem(QString::fromStdString(match.severity));
+        auto patternItem = new QTableWidgetItem(QString::fromStdString(match.pattern_name));
+        auto matchItem = new QTableWidgetItem(QString::fromStdString(match.matched_text));
+        auto previewItem = new QTableWidgetItem(QString::fromStdString(match.preview));
+        
+        // Цвет severity
+        if (match.severity == "CRITICAL") {
+            severityItem->setBackground(QColor(255, 200, 200));
+            severityItem->setForeground(QColor(139, 0, 0));
+        } else if (match.severity == "HIGH") {
+            severityItem->setBackground(QColor(255, 230, 200));
+            severityItem->setForeground(QColor(184, 92, 0));
+        } else if (match.severity == "MEDIUM") {
+            severityItem->setBackground(QColor(255, 255, 200));
+        }
+        
+        resultsTable->setItem(row, 0, fileItem);
+        resultsTable->setItem(row, 1, lineItem);
+        resultsTable->setItem(row, 2, severityItem);
+        resultsTable->setItem(row, 3, patternItem);
+        resultsTable->setItem(row, 4, matchItem);
+        resultsTable->setItem(row, 5, previewItem);
+    }
+    
+    resultsTable->setUpdatesEnabled(true);  // включить обратно :)))))
+    resultsTable->resizeColumnsToContents();
+}
+
+
+void MainWindow::updateStatistics(const ScanStatistics& stats) {
+    QString statsText = QString("Files: %1 | Matches: %2 (🔴 %3, 🟠 %4, 🟡 %5, 🟢 %6) | Time: %7s")
+        .arg(stats.total_files_scanned)
+        .arg(stats.total_matches_found)
+        .arg(stats.critical_count)
+        .arg(stats.high_count)
+        .arg(stats.medium_count)
+        .arg(stats.low_count)
+        .arg(stats.scan_time_seconds, 0, 'f', 2);
+    
+    statsLabel->setText(statsText);
+    statusBar()->showMessage("Scan complete");
+}
+
+// ScanThread Implementation
+
+void ScanThread::run() {
+    try {
+        // Setup progress callback
+        detector->setProgressCallback([this](size_t current, size_t total) {
+            emit progress(current, total);
+        });
+        
+        ScanResult result = detector->scan(options);
+        emit finished(result);
+        
+    } catch (const std::exception& e) {
+        emit error(QString::fromStdString(e.what()));
+    }
+}
