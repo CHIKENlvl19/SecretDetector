@@ -1,86 +1,51 @@
 {
   "version": "1.0.0",
   "description": "Secret Detector Patterns",
-  "patterns": [
-    {
-      "id": "aws_access_key",
-      "name": "AWS Access Key ID",
-      "pattern": "\\b(AKIA[0-9A-Z]{16})\\b",
+  "patterns": {
+    "aws_key": {
+      "regex": "\\b(AKIA[0-9A-Z]{16})\\b",
       "severity": "CRITICAL",
-      "enabled": true
+      "description": "AWS Access Key ID"
     },
-    {
-      "id": "github_token_classic",
-      "name": "GitHub Token (Classic)",
-      "pattern": "\\b(ghp_[0-9a-zA-Z]{36})\\b",
+    "github_token": {
+      "regex": "\\b(ghp_[0-9a-zA-Z]{36})\\b",
       "severity": "CRITICAL",
-      "enabled": true
+      "description": "GitHub Personal Access Token"
     },
-    {
-      "id": "github_token_fine_grained",
-      "name": "GitHub Token (Fine-grained)",
-      "pattern": "\\b(github_pat_[0-9a-zA-Z_]{82})\\b",
+    "github_token_fine": {
+      "regex": "\\b(github_pat_[0-9a-zA-Z_]{82})\\b",
       "severity": "CRITICAL",
-      "enabled": true
+      "description": "GitHub Fine-Grained Token"
     },
-    {
-      "id": "private_key_rsa",
-      "name": "Private Key (RSA)",
-      "pattern": "-----BEGIN RSA PRIVATE KEY-----",
+    "private_key": {
+      "regex": "-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----",
       "severity": "CRITICAL",
-      "enabled": true
+      "description": "Private Key"
     },
-    {
-      "id": "private_key_openssh",
-      "name": "Private Key (OpenSSH)",
-      "pattern": "-----BEGIN OPENSSH PRIVATE KEY-----",
-      "severity": "CRITICAL",
-      "enabled": true
-    },
-    {
-      "id": "slack_token",
-      "name": "Slack Token",
-      "pattern": "xox[baprs]-[0-9a-zA-Z]{10,48}",
+    "slack_token": {
+      "regex": "xox[baprs]-[0-9a-zA-Z]{10,48}",
       "severity": "HIGH",
-      "enabled": true
+      "description": "Slack Token"
     },
-    {
-      "id": "password_assignment",
-      "name": "Password Assignment",
-      "pattern": "(password|passwd)\\s*[=:]\\s*[\"'][^\"']{8,}[\"']",
+    "password_plain": {
+      "regex": "\\b(password|passwd)\\s*[=:]\\s*[\"']([^\"']{6,})[\"']",
       "severity": "HIGH",
-      "enabled": true
+      "description": "Password in plain text"
     },
-    {
-      "id": "api_key_assignment",
-      "name": "API Key Assignment",
-      "pattern": "(api[_-]?key|apikey)\\s*[=:]\\s*[\"'][^\"']{16,}[\"']",
+    "api_key": {
+      "regex": "(api[_-]?key|apikey)\\s*[=:]\\s*[\"'][^\"']{16,}[\"']",
       "severity": "HIGH",
-      "enabled": true
+      "description": "API Key assignment"
     },
-    {
-      "id": "database_url_postgres",
-      "name": "PostgreSQL URL",
-      "pattern": "postgres://[^\\s\"']+:[^\\s\"']+@[^\\s\"']+",
+    "database_url": {
+      "regex": "(postgres|mysql|mongodb)://[^\\s\"']+:[^\\s\"']+@[^\\s\"']+",
       "severity": "HIGH",
-      "enabled": true
+      "description": "Database connection URL"
     },
-    {
-      "id": "jwt_token",
-      "name": "JWT Token",
-      "pattern": "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+",
+    "jwt_token": {
+      "regex": "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+",
       "severity": "MEDIUM",
-      "enabled": true
-    },
-    {
-      "id": "high_entropy_string",
-      "name": "High Entropy String",
-      "pattern": "",
-      "severity": "LOW",
-      "enabled": false,
-      "entropy_check": true,
-      "min_entropy": 5.0,
-      "min_length": 40
+      "description": "JWT Token"
     }
-  ]
+  }
 }

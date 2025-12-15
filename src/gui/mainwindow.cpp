@@ -33,9 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     
     // попробовать несколько путей
     std::vector<std::string> config_paths = {
-        "./config/patterns.json",
-        "../config/patterns.json",
-        "/etc/secret_detector/patterns.json"
+        "/opt/secret-detector/config/patterns.json"
     };
     
     bool loaded = false;
