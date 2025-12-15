@@ -15,6 +15,10 @@
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <QUrl>
+#include <QSettings>
+#include <QDialog>
+#include <QListWidget>
+#include <QDialogButtonBox>
 #include "utils/export_manager.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -23,6 +27,9 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle("Secret Detector");
     resize(1200, 800);
     
+    // инициализация настроек
+    settings = new QSettings("SecretDetector", "GUI", this);
+
     setupUI();
 
     // excludeEdit->setText("build, config, .git, node_modules, __pycache__, .venv");
@@ -228,6 +235,11 @@ void MainWindow::createMenuBar() {
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, qApp, &QApplication::quit);
     
+    QMenu* settingsMenu = menuBar()->addMenu("&Settings");
+    
+    QAction* resetEditorAction = settingsMenu->addAction("&Change Default Editor...");
+    connect(resetEditorAction, &QAction::triggered, this, &MainWindow::onResetEditorClicked);
+
     QMenu* helpMenu = menuBar()->addMenu("&Help");
     QAction* aboutAction = helpMenu->addAction("&About");
     connect(aboutAction, &QAction::triggered, [this]() {
@@ -661,55 +673,50 @@ void MainWindow::onResultTableDoubleClicked(int row, int column) {
 
 // открыть файл в текстовом редакторе
 void MainWindow::openInEditor(const QString& filePath, int lineNumber) {
-    QString editor = findAvailableEditor();
+    QString editor = getPreferredEditor();
     
-    if (editor.isEmpty()) {
-        // Fallback - открыть в дефолтном приложении системы
-        logText->append("[INFO] No text editor found, opening with default app...");
-        if (QDesktopServices::openUrl(QUrl::fromLocalFile(filePath))) {
-            statusBar()->showMessage(QString("Opened: %1").arg(filePath), 3000);
-        } else {
-            QMessageBox::warning(this, "Cannot Open File",
-                               "Failed to open file with default application.");
+    // если редактор не выбран или не существует - показать диалог
+    if (editor.isEmpty() || !QFile::exists(editor)) {
+        if (!editor.isEmpty()) {
+            logText->append(QString("[WARNING] Previously selected editor not found: %1").arg(editor));
         }
-        return;
+        
+        editor = showEditorSelectionDialog();
+        
+        if (editor.isEmpty()) {
+            // пользователь отменил выбор
+            return;
+        }
     }
     
     // запустить редактор с переходом на строку
     QStringList args;
+    QFileInfo editorInfo(editor);
+    QString editorName = editorInfo.fileName();
     
-    if (editor.contains("code")) {
-        // VS Code: code --goto file.txt:line:column
+    if (editorName.contains("code")) {
         args << "--goto" << QString("%1:%2:1").arg(filePath).arg(lineNumber);
-    } else if (editor.contains("gedit")) {
-        // Gedit: gedit file.txt +line
+    } else if (editorName.contains("gedit")) {
         args << QString("+%1").arg(lineNumber) << filePath;
-    } else if (editor.contains("kate")) {
-        // Kate: kate file.txt -l line
+    } else if (editorName.contains("kate")) {
         args << filePath << "-l" << QString::number(lineNumber);
-    } else if (editor.contains("subl")) {
-        // Sublime Text: subl file.txt:line
+    } else if (editorName.contains("subl")) {
         args << QString("%1:%2").arg(filePath).arg(lineNumber);
-    } else if (editor.contains("vim") || editor.contains("nvim")) {
-        // Vim/Neovim: vim +line file.txt
+    } else if (editorName.contains("vim") || editorName.contains("nvim")) {
         args << QString("+%1").arg(lineNumber) << filePath;
-    } else if (editor.contains("nano")) {
-        // Nano: nano +line file.txt
+    } else if (editorName.contains("nano")) {
         args << QString("+%1").arg(lineNumber) << filePath;
-    } else if (editor.contains("emacs")) {
-        // Emacs: emacs +line file.txt
+    } else if (editorName.contains("emacs")) {
         args << QString("+%1").arg(lineNumber) << filePath;
     } else {
-        // Неизвестный редактор - просто открыть файл
         args << filePath;
     }
     
-    // запустить процесс
     bool success = QProcess::startDetached(editor, args);
     
     if (success) {
         logText->append(QString("[INFO] Opened in %1: %2:%3")
-                        .arg(QFileInfo(editor).fileName())
+                        .arg(editorName)
                         .arg(filePath)
                         .arg(lineNumber));
         statusBar()->showMessage(QString("Opened: %1 (line %2)")
@@ -717,43 +724,185 @@ void MainWindow::openInEditor(const QString& filePath, int lineNumber) {
                                 .arg(lineNumber), 3000);
     } else {
         QMessageBox::warning(this, "Cannot Launch Editor",
-                           QString("Failed to launch: %1").arg(editor));
+                           QString("Failed to launch: %1\n\nWould you like to select a different editor?").arg(editorName));
+        // сбросить редактор и попробовать снова
+        setPreferredEditor("");
+        openInEditor(filePath, lineNumber);
     }
 }
 
-// найти установленный текстовый редактор
-QString MainWindow::findAvailableEditor() {
-    // список редакторов в порядке приоритета
-    QStringList editors = {
-        "code",           // VS Code
-        "/usr/bin/code",
-        "gedit",          // GNOME Text Editor
-        "/usr/bin/gedit",
-        "kate",           // KDE Kate
-        "/usr/bin/kate",
-        "subl",           // Sublime Text
-        "/usr/bin/subl",
-        "nvim",           // Neovim
-        "/usr/bin/nvim",
-        "vim",            // Vim
-        "/usr/bin/vim",
-        "nano",           // Nano
-        "/usr/bin/nano",
-        "emacs",          // Emacs
-        "/usr/bin/emacs",
-        "mousepad",       // Xfce Mousepad
-        "/usr/bin/mousepad"
+
+// получить сохраненный редактор
+QString MainWindow::getPreferredEditor() {
+    return settings->value("editor/preferred", "").toString();
+}
+
+// сохранить выбранный редактор
+void MainWindow::setPreferredEditor(const QString& editorPath) {
+    settings->setValue("editor/preferred", editorPath);
+}
+
+// получить список доступных редакторов
+QList<QPair<QString, QString>> MainWindow::getAvailableEditors() {
+    QList<QPair<QString, QString>> editors;
+    
+    // список известных редакторов <имя, команда>
+    QStringList editorCommands = {
+        "code", "gedit", "kate", "subl", "nvim", "vim", 
+        "nano", "emacs", "mousepad", "pluma", "geany"
     };
     
-    // попробовать найти через PATH
-    for (const QString& editorName : editors) {
-        QString fullPath = QStandardPaths::findExecutable(editorName);
+    QStringList editorNames = {
+        "Visual Studio Code", "Gedit", "Kate", "Sublime Text", 
+        "Neovim", "Vim", "Nano", "Emacs", "Mousepad", "Pluma", "Geany"
+    };
+    
+    for (int i = 0; i < editorCommands.size(); ++i) {
+        QString fullPath = QStandardPaths::findExecutable(editorCommands[i]);
         if (!fullPath.isEmpty()) {
-            return fullPath;
+            editors.append(qMakePair(editorNames[i], fullPath));
         }
     }
     
-    return QString();  // ничего не найдено
+    return editors;
+}
+
+// диалог выбора редактора
+QString MainWindow::showEditorSelectionDialog(bool showRememberCheckbox) {
+    QDialog* dialog = new QDialog(this);
+    dialog->setWindowTitle("Select Code Editor");
+    dialog->setMinimumWidth(500);
+    
+    QVBoxLayout* layout = new QVBoxLayout(dialog);
+    
+    // заголовок
+    QLabel* titleLabel = new QLabel("<h3>Choose Your Preferred Code Editor</h3>");
+    layout->addWidget(titleLabel);
+    
+    QLabel* descLabel = new QLabel("Select an editor to open files when you double-click on results:");
+    descLabel->setWordWrap(true);
+    layout->addWidget(descLabel);
+    
+    // список доступных редакторов
+    QListWidget* editorList = new QListWidget(dialog);
+    editorList->setSelectionMode(QAbstractItemView::SingleSelection);
+    
+    QList<QPair<QString, QString>> availableEditors = getAvailableEditors();
+    
+    if (availableEditors.isEmpty()) {
+        QLabel* noEditorsLabel = new QLabel(
+            "<p style='color: red;'>No supported text editors found!</p>"
+            "<p>Please install one of the following:</p>"
+            "<ul>"
+            "<li>Visual Studio Code (code)</li>"
+            "<li>Gedit (gedit)</li>"
+            "<li>Kate (kate)</li>"
+            "<li>Sublime Text (subl)</li>"
+            "<li>Vim/Neovim (vim/nvim)</li>"
+            "</ul>"
+        );
+        noEditorsLabel->setWordWrap(true);
+        layout->addWidget(noEditorsLabel);
+        
+        QPushButton* okButton = new QPushButton("OK", dialog);
+        connect(okButton, &QPushButton::clicked, dialog, &QDialog::reject);
+        layout->addWidget(okButton);
+        
+        dialog->exec();
+        delete dialog;
+        return QString();
+    }
+    
+    for (const auto& editor : availableEditors) {
+        QListWidgetItem* item = new QListWidgetItem(
+            QString("%1\n   %2").arg(editor.first).arg(editor.second)
+        );
+        item->setData(Qt::UserRole, editor.second);  // сохранить путь
+        editorList->addItem(item);
+    }
+    
+    editorList->setCurrentRow(0);
+    layout->addWidget(editorList);
+    
+    // чекбокс "Запомнить выбор"
+    QCheckBox* rememberCheck = nullptr;
+    if (showRememberCheckbox) {
+        rememberCheck = new QCheckBox("Remember my choice (can be changed in Settings menu)", dialog);
+        rememberCheck->setChecked(true);
+        layout->addWidget(rememberCheck);
+    }
+    
+    // кнопка "Открыть с помощью другого..."
+    QPushButton* browseButton = new QPushButton("Browse for Editor...", dialog);
+    connect(browseButton, &QPushButton::clicked, [&]() {
+        QString customEditor = QFileDialog::getOpenFileName(
+            dialog,
+            "Select Code Editor Executable",
+            "/usr/bin",
+            "All Files (*)"
+        );
+        
+        if (!customEditor.isEmpty()) {
+            QListWidgetItem* customItem = new QListWidgetItem(
+                QString("Custom: %1").arg(QFileInfo(customEditor).fileName())
+            );
+            customItem->setData(Qt::UserRole, customEditor);
+            editorList->addItem(customItem);
+            editorList->setCurrentItem(customItem);
+        }
+    });
+    layout->addWidget(browseButton);
+    
+    // кнопки OK/Cancel
+    QDialogButtonBox* buttonBox = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+        dialog
+    );
+    connect(buttonBox, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
+    connect(buttonBox, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+    layout->addWidget(buttonBox);
+    
+    // двойной клик = OK
+    connect(editorList, &QListWidget::itemDoubleClicked, dialog, &QDialog::accept);
+    
+    int result = dialog->exec();
+    
+    QString selectedEditor;
+    if (result == QDialog::Accepted && editorList->currentItem()) {
+        selectedEditor = editorList->currentItem()->data(Qt::UserRole).toString();
+        
+        // сохранить выбор если включен чекбокс
+        if (!showRememberCheckbox || (rememberCheck && rememberCheck->isChecked())) {
+            setPreferredEditor(selectedEditor);
+            logText->append(QString("[INFO] Default editor set to: %1").arg(selectedEditor));
+        }
+    }
+    
+    delete dialog;
+    return selectedEditor;
+}
+
+// сброс редактора
+void MainWindow::onResetEditorClicked() {
+    QString currentEditor = getPreferredEditor();
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Change Default Editor");
+    msgBox.setText("Current default editor:");
+    msgBox.setInformativeText(currentEditor.isEmpty() ? 
+        "Not set" : 
+        QFileInfo(currentEditor).fileName() + "\n" + currentEditor);
+    msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+    msgBox.button(QMessageBox::Ok)->setText("Change Editor");
+    
+    if (msgBox.exec() == QMessageBox::Ok) {
+        QString newEditor = showEditorSelectionDialog(true);
+        if (!newEditor.isEmpty()) {
+            statusBar()->showMessage(QString("Editor changed to: %1")
+                .arg(QFileInfo(newEditor).fileName()), 3000);
+        }
+    }
 }
 
 // ScanThread Implementation

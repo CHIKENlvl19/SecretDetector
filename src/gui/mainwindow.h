@@ -11,6 +11,7 @@
 #include <QTextEdit>
 #include <QLabel>
 #include <QThread>
+#include <QSettings>
 #include "core/secret_detector.h"
 
 class ScanThread;
@@ -34,6 +35,7 @@ private slots:
     void onScanFinished(const ScanResult& result);
     void onScanError(const QString& error);
     void onResultTableDoubleClicked(int row, int column);
+    void onResetEditorClicked();
 
 private:
     void setupUI();
@@ -47,6 +49,11 @@ private:
 
     void openInEditor(const QString& filePath, int lineNumber);
     QString findAvailableEditor();  // найти установленный редактор
+
+    QString showEditorSelectionDialog(bool showRememberCheckbox = true);
+    QString getPreferredEditor();
+    void setPreferredEditor(const QString& editorPath);
+    QList<QPair<QString, QString>> getAvailableEditors();  // <name, path>
 
     // UI Components
     QLineEdit* pathEdit;
@@ -81,6 +88,8 @@ private:
     SecretDetector detector;
     ScanResult lastResult;
     bool scanning;
+
+    QSettings* settings;
 };
 
 // worker thread для сканирования
