@@ -33,6 +33,7 @@ private slots:
     void onScanProgress(int current, int total);
     void onScanFinished(const ScanResult& result);
     void onScanError(const QString& error);
+    void onResultTableDoubleClicked(int row, int column);
 
 private:
     void setupUI();
@@ -43,6 +44,9 @@ private:
 
     void loadResults(const ScanResult& result);
     void updateStatistics(const ScanStatistics& stats);
+
+    void openInEditor(const QString& filePath, int lineNumber);
+    QString findAvailableEditor();  // найти установленный редактор
 
     // UI Components
     QLineEdit* pathEdit;

@@ -10,6 +10,11 @@
 #include <QHeaderView>
 #include <QApplication>
 #include <QSplitter>
+#include <QProcess>
+#include <QDesktopServices>
+#include <QStandardPaths>
+#include <QFileInfo>
+#include <QUrl>
 #include "utils/export_manager.h"
 
 MainWindow::MainWindow(QWidget *parent)
@@ -188,7 +193,11 @@ void MainWindow::setupUI() {
     resultsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     resultsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     resultsTable->setAlternatingRowColors(true);
+    resultsTable->setSortingEnabled(true);
     
+    connect(resultsTable, &QTableWidget::cellDoubleClicked,
+            this, &MainWindow::onResultTableDoubleClicked);
+
     splitter->addWidget(resultsTable);
     
     // лог
@@ -617,6 +626,134 @@ void MainWindow::updateStatistics(const ScanStatistics& stats) {
     
     statsLabel->setText(statsText);
     statusBar()->showMessage("Scan complete");
+}
+
+// обработчик двойного клика на результат
+void MainWindow::onResultTableDoubleClicked(int row, int column) {
+    Q_UNUSED(column);  // не используем колонку
+    
+    if (row < 0 || row >= resultsTable->rowCount()) {
+        return;
+    }
+    
+    // gолучить путь к файлу и номер строки
+    QTableWidgetItem* fileItem = resultsTable->item(row, 0);  // колонка File
+    QTableWidgetItem* lineItem = resultsTable->item(row, 1);  // колонка Line
+    
+    if (!fileItem || !lineItem) {
+        return;
+    }
+    
+    QString filePath = fileItem->text();
+    int lineNumber = lineItem->text().toInt();
+    
+    // проверить что файл существует
+    if (!QFile::exists(filePath)) {
+        logText->append(QString("[ERROR] File not found: %1").arg(filePath));
+        QMessageBox::warning(this, "File Not Found",
+                           QString("The file does not exist:\n%1").arg(filePath));
+        return;
+    }
+    
+    // открыть в редакторе
+    openInEditor(filePath, lineNumber);
+}
+
+// открыть файл в текстовом редакторе
+void MainWindow::openInEditor(const QString& filePath, int lineNumber) {
+    QString editor = findAvailableEditor();
+    
+    if (editor.isEmpty()) {
+        // Fallback - открыть в дефолтном приложении системы
+        logText->append("[INFO] No text editor found, opening with default app...");
+        if (QDesktopServices::openUrl(QUrl::fromLocalFile(filePath))) {
+            statusBar()->showMessage(QString("Opened: %1").arg(filePath), 3000);
+        } else {
+            QMessageBox::warning(this, "Cannot Open File",
+                               "Failed to open file with default application.");
+        }
+        return;
+    }
+    
+    // запустить редактор с переходом на строку
+    QStringList args;
+    
+    if (editor.contains("code")) {
+        // VS Code: code --goto file.txt:line:column
+        args << "--goto" << QString("%1:%2:1").arg(filePath).arg(lineNumber);
+    } else if (editor.contains("gedit")) {
+        // Gedit: gedit file.txt +line
+        args << QString("+%1").arg(lineNumber) << filePath;
+    } else if (editor.contains("kate")) {
+        // Kate: kate file.txt -l line
+        args << filePath << "-l" << QString::number(lineNumber);
+    } else if (editor.contains("subl")) {
+        // Sublime Text: subl file.txt:line
+        args << QString("%1:%2").arg(filePath).arg(lineNumber);
+    } else if (editor.contains("vim") || editor.contains("nvim")) {
+        // Vim/Neovim: vim +line file.txt
+        args << QString("+%1").arg(lineNumber) << filePath;
+    } else if (editor.contains("nano")) {
+        // Nano: nano +line file.txt
+        args << QString("+%1").arg(lineNumber) << filePath;
+    } else if (editor.contains("emacs")) {
+        // Emacs: emacs +line file.txt
+        args << QString("+%1").arg(lineNumber) << filePath;
+    } else {
+        // Неизвестный редактор - просто открыть файл
+        args << filePath;
+    }
+    
+    // запустить процесс
+    bool success = QProcess::startDetached(editor, args);
+    
+    if (success) {
+        logText->append(QString("[INFO] Opened in %1: %2:%3")
+                        .arg(QFileInfo(editor).fileName())
+                        .arg(filePath)
+                        .arg(lineNumber));
+        statusBar()->showMessage(QString("Opened: %1 (line %2)")
+                                .arg(QFileInfo(filePath).fileName())
+                                .arg(lineNumber), 3000);
+    } else {
+        QMessageBox::warning(this, "Cannot Launch Editor",
+                           QString("Failed to launch: %1").arg(editor));
+    }
+}
+
+// найти установленный текстовый редактор
+QString MainWindow::findAvailableEditor() {
+    // список редакторов в порядке приоритета
+    QStringList editors = {
+        "code",           // VS Code
+        "/usr/bin/code",
+        "gedit",          // GNOME Text Editor
+        "/usr/bin/gedit",
+        "kate",           // KDE Kate
+        "/usr/bin/kate",
+        "subl",           // Sublime Text
+        "/usr/bin/subl",
+        "nvim",           // Neovim
+        "/usr/bin/nvim",
+        "vim",            // Vim
+        "/usr/bin/vim",
+        "nano",           // Nano
+        "/usr/bin/nano",
+        "emacs",          // Emacs
+        "/usr/bin/emacs",
+        "mousepad",       // Xfce Mousepad
+        "/usr/bin/mousepad"
+    };
+    
+    // попробовать найти через PATH
+    for (const QString& editorName : editors) {
+        QString fullPath = QStandardPaths::findExecutable(editorName);
+        if (!fullPath.isEmpty()) {
+            return fullPath;
+        }
+    }
+    
+    return QString();  // ничего не найдено
 }
 
 // ScanThread Implementation
