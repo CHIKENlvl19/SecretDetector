@@ -18,6 +18,7 @@ struct Pattern {
     std::string description;    ///< Описание паттерна
     bool use_entropy = false;   ///< Использовать энтропию анализ
     double entropy_threshold = 4.0; ///< Порог энтропии
+    bool enabled = true;
 };
 
 /**

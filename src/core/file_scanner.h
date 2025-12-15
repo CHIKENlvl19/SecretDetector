@@ -96,4 +96,9 @@ private:
      */
     bool isIgnoredByGitignore(const std::string& file_path,
                              const std::vector<std::string>& gitignore_patterns) const;
+
+    /**
+     * Проверить, является ли файл бинарным
+     */
+    bool isBinaryContent(const std::string& file_path) const;
 };

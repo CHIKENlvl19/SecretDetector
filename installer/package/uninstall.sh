@@ -9,13 +9,13 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${YELLOW}╔════════════════════════════════════════╗${NC}"
-echo -e "${YELLOW}║   Secret Detector Uninstaller v1.0.0  ║${NC}"
+echo -e "${YELLOW}║   Secret Detector Uninstaller v1.0.0   ║${NC}"
 echo -e "${YELLOW}╚════════════════════════════════════════╝${NC}"
 echo ""
 
 if [ "$EUID" -ne 0 ]; then 
     echo -e "${RED}This uninstaller requires root privileges.${NC}"
-    echo "Please run: sudo ./uninstall.sh"
+    echo "Please run: sudo secret-detector-uninstall"
     exit 1
 fi
 

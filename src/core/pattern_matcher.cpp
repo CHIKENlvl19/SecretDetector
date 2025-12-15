@@ -75,80 +75,145 @@ bool PatternMatcher::loadFromJson(const json& patterns_json) {
     }
 }
 
-std::vector<Match> PatternMatcher::findMatches(const std::string& content, 
-                                             const std::string& file_path) const {
-    std::vector<Match> matches;
+// std::vector<Match> PatternMatcher::findMatches(const std::string& content, 
+//                                              const std::string& file_path) const {
+//     std::vector<Match> matches;
 
-    // разделить содержимое на строки
-    std::istringstream iss(content);
-    std::string line;
-    int line_number = 0;
+//     // разделить содержимое на строки
+//     std::istringstream iss(content);
+//     std::string line;
+//     int line_number = 0;
 
-    while (std::getline(iss, line)) {
-        line_number++;
+//     while (std::getline(iss, line)) {
+//         line_number++;
 
-        // применить каждый паттерн
-        for (const auto& pattern : patterns) {
-            // regex-based matching
-                std::smatch match;
-                std::string::const_iterator search_start(line.cbegin());
+//         // применить каждый паттерн
+//         for (const auto& pattern : patterns) {
+//             // regex-based matching
+//                 std::smatch match;
+//                 std::string::const_iterator search_start(line.cbegin());
 
-                while (std::regex_search(search_start, line.cend(), match, pattern.regex)) {
-                    Match result;
-                    result.file_path = file_path;
-                    result.line_number = line_number;
-                    result.column_number = std::distance(line.cbegin(), match[0].first) + 1;
-                    result.pattern_name = pattern.name;
-                    result.matched_text = match[0];
-                    result.severity = pattern.severity;
-                    result.preview = line;
+//                 while (std::regex_search(search_start, line.cend(), match, pattern.regex)) {
+//                     Match result;
+//                     result.file_path = file_path;
+//                     result.line_number = line_number;
+//                     result.column_number = std::distance(line.cbegin(), match[0].first) + 1;
+//                     result.pattern_name = pattern.name;
+//                     result.matched_text = match[0];
+//                     result.severity = pattern.severity;
+//                     result.preview = line;
 
-                    // ограничить вывод "matched_text" для конфиденциальности
-                    if (result.matched_text.length() > 50) {
-                        result.matched_text = result.matched_text.substr(0, 47) + "...";
-                    }
+//                     // ограничить вывод "matched_text" для конфиденциальности
+//                     if (result.matched_text.length() > 50) {
+//                         result.matched_text = result.matched_text.substr(0, 47) + "...";
+//                     }
 
-                    // ограничить preview
-                    if (result.preview.length() > 100) {
-                        result.preview = result.preview.substr(0, 97) + "...";
-                    }
+//                     // ограничить preview
+//                     if (result.preview.length() > 100) {
+//                         result.preview = result.preview.substr(0, 97) + "...";
+//                     }
 
-                    matches.push_back(result);
-                    search_start = match[0].second;
-                }
+//                     matches.push_back(result);
+//                     search_start = match[0].second;
+//                 }
 
-            // Entropy-based matching
-            if (pattern.use_entropy) {
-                // попробовать найти потенциальные ключи по энтропии
-                // это может включать поиск строк, похожих на ключи
-                // упрощенная версия: ищем слова с большим количеством символов
-                std::istringstream word_iss(line);
-                std::string word;
-                int column = 0;
+//             // Entropy-based matching
+//             if (pattern.use_entropy) {
+//                 // попробовать найти потенциальные ключи по энтропии
+//                 // это может включать поиск строк, похожих на ключи
+//                 // упрощенная версия: ищем слова с большим количеством символов
+//                 std::istringstream word_iss(line);
+//                 std::string word;
+//                 int column = 0;
 
-                while (word_iss >> word) {
-                    column = line.find(word, column);
-                    if (column != std::string::npos) {
-                        if (word.length() > 20) { // Длина ключа обычно > 20
-                            double entropy = EntropyAnalyzer::calculateEntropy(word);
-                            if (entropy >= pattern.entropy_threshold) {
-                                Match result;
-                                result.file_path = file_path;
-                                result.line_number = line_number;
-                                result.column_number = column + 1;
-                                result.pattern_name = pattern.name + "_entropy";
-                                result.matched_text = word.substr(0, 50) + (word.length() > 50 ? "..." : "");
-                                result.severity = pattern.severity;
-                                result.preview = line;
-                                result.entropy = entropy;
+//                 while (word_iss >> word) {
+//                     column = line.find(word, column);
+//                     if (column != std::string::npos) {
+//                         if (word.length() > 20) { // Длина ключа обычно > 20
+//                             double entropy = EntropyAnalyzer::calculateEntropy(word);
+//                             if (entropy >= pattern.entropy_threshold) {
+//                                 Match result;
+//                                 result.file_path = file_path;
+//                                 result.line_number = line_number;
+//                                 result.column_number = column + 1;
+//                                 result.pattern_name = pattern.name + "_entropy";
+//                                 result.matched_text = word.substr(0, 50) + (word.length() > 50 ? "..." : "");
+//                                 result.severity = pattern.severity;
+//                                 result.preview = line;
+//                                 result.entropy = entropy;
                                 
-                                matches.push_back(result);
-                            }
-                        }
-                        column += word.length();
-                    }
-                }
+//                                 matches.push_back(result);
+//                             }
+//                         }
+//                         column += word.length();
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     return matches;
+// }
+
+std::vector<Match> PatternMatcher::findMatches(const std::string& content,
+                                                const std::string& file_path) const {
+    std::vector<Match> matches;
+    
+    // применяем regex паттерны
+    for (const auto& pattern : patterns) {
+        // пропустить паттерны с энтропией (обработаем отдельно)
+        if (pattern.use_entropy) {
+            continue;
+        }
+        
+        try {
+            std::sregex_iterator iter(content.begin(), content.end(), pattern.regex);
+            std::sregex_iterator end;
+            
+            while (iter != end) {
+                Match match;
+                match.file_path = file_path;
+                match.pattern_name = pattern.name;
+                match.matched_text = iter->str();
+                match.severity = pattern.severity;
+                
+                // найти номер строки
+                size_t pos = iter->position();
+                match.line_number = 1 + std::count(content.begin(), content.begin() + pos, '\n');
+                
+                // получить preview (текущую строку)
+                size_t line_start = content.rfind('\n', pos);
+                if (line_start == std::string::npos) line_start = 0;
+                else line_start++;
+                
+                size_t line_end = content.find('\n', pos);
+                if (line_end == std::string::npos) line_end = content.length();
+                
+                match.preview = content.substr(line_start, line_end - line_start);
+                match.column_number = pos - line_start + 1;
+                match.entropy = 0.0;
+                
+                matches.push_back(match);
+                ++iter;
             }
+        } catch (const std::regex_error& e) {
+            LOG_WARN_FMT("Invalid regex for pattern {}: {}", pattern.name, e.what());
+        }
+    }
+    
+    // отрубить энтропию
+    /*
+    // Применить энтропию ТОЛЬКО если use_entropy = true
+    for (const auto& pattern : patterns) {
+        if (pattern.use_entropy) {
+            // Код энтропии
+        }
+    }
+    */
+    
+    for (const auto& pattern : patterns) {
+        if (!pattern.enabled) {  // Пропустить отключенные
+            continue;
         }
     }
 

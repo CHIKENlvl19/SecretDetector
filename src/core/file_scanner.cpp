@@ -6,6 +6,7 @@
 #include <mutex>
 #include <queue>
 #include <chrono>
+#include <fstream>
 
 namespace fs = std::filesystem;
 
@@ -169,7 +170,7 @@ bool FileScanner::shouldScanFile(const std::string& file_path) const {
         ".pyc", ".pyo", ".class", ".jar", ".war", ".ear",
         ".deb", ".rpm", ".dmg", ".pkg", ".msi", ".appimage",
         ".iso", ".img", ".dat",
-        ".db", ".sqlite", ".sqlite3"
+        ".db", ".sqlite", ".sqlite3", ".torrent"
     };
     
     // преобразовать расширение в нижний регистр
@@ -197,7 +198,7 @@ bool FileScanner::shouldScanFile(const std::string& file_path) const {
         }
     }
     
-    // псли указаны расширения для включения
+    // если указаны расширения для включения
     if (!options.include_extensions.empty()) {
         bool found = false;
         for (const auto& ext : options.include_extensions) {
@@ -209,9 +210,51 @@ bool FileScanner::shouldScanFile(const std::string& file_path) const {
         return found;
     }
     
+    // проверить содержимое на null-байты, (бинарный файл)
+    if (isBinaryContent(file_path)) {
+        LOG_DEBUG_FMT("Skipping binary content: {}", file_path);
+        return false;
+    }
+
     return true;
 }
 
+bool FileScanner::isBinaryContent(const std::string& file_path) const {
+    std::ifstream file(file_path, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    
+    // прочитать первые 512 байт
+    char buffer[512];
+    file.read(buffer, sizeof(buffer));
+    std::streamsize bytes_read = file.gcount();
+    
+    if (bytes_read == 0) {
+        return false;
+    }
+    
+    // если есть хотя бы один null-байт - точно бинарный
+    for (std::streamsize i = 0; i < bytes_read; ++i) {
+        if (buffer[i] == '\0') {
+            return true;  // Бинарный файл
+        }
+    }
+    
+    // подсчитать непечатные символы
+    int non_printable = 0;
+    for (std::streamsize i = 0; i < bytes_read; ++i) {
+        unsigned char c = static_cast<unsigned char>(buffer[i]);
+        if (c < 32 && c != '\n' && c != '\r' && c != '\t') {
+            non_printable++;
+        } else if (c > 127 && c < 160) {
+            non_printable++;
+        }
+    }
+    
+    // если больше 10% непечатных - бинарный
+    return (non_printable * 100 / bytes_read) > 10;
+}
 
 std::vector<std::string> FileScanner::loadGitignorePatterns() {
     std::vector<std::string> patterns;
