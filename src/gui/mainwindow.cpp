@@ -224,10 +224,44 @@ void MainWindow::createMenuBar() {
     QMenu* helpMenu = menuBar()->addMenu("&Help");
     QAction* aboutAction = helpMenu->addAction("&About");
     connect(aboutAction, &QAction::triggered, [this]() {
-        QMessageBox::about(this, "About Secret Detector",
-            "Secret Detector v1.0.0\n\n"
-            "Find secrets in your code: API keys, tokens, passwords, and more.\n\n"
-            "Built with C++17 and Qt5");
+        QDialog* aboutDialog = new QDialog(this);
+        aboutDialog->setWindowTitle("About Secret Detector");
+        aboutDialog->setFixedSize(450, 250);
+        
+        QVBoxLayout* layout = new QVBoxLayout(aboutDialog);
+        
+        // заголовок
+        QLabel* titleLabel = new QLabel("<h2>Secret Detector v1.0.0</h2>");
+        titleLabel->setAlignment(Qt::AlignCenter);
+        layout->addWidget(titleLabel);
+        
+        // описание
+        QLabel* descLabel = new QLabel(
+            "Find secrets in your code: API keys, tokens, passwords, and more.<br><br>"
+            "Built with C++17 and Qt5<br><br>"
+            "© 2025 Berdnikov Alexey. Licensed under the MIT License."
+        );
+        descLabel->setAlignment(Qt::AlignCenter);
+        descLabel->setWordWrap(true);
+        layout->addWidget(descLabel);
+        
+        // ссылка на GitHub
+        QLabel* linkLabel = new QLabel(
+            "<p><b>GitHub Repository:</b><br>"
+            "<a href='https://github.com/CHIKENlvl19/SecretDetector'>"
+            "https://github.com/CHIKENlvl19/SecretDetector</a></p>"
+        );
+        linkLabel->setAlignment(Qt::AlignCenter);
+        linkLabel->setTextFormat(Qt::RichText);
+        linkLabel->setOpenExternalLinks(true);  // автоматически открывать ссылки
+        layout->addWidget(linkLabel);
+        
+        // Кнопка OK
+        QPushButton* okButton = new QPushButton("OK");
+        connect(okButton, &QPushButton::clicked, aboutDialog, &QDialog::accept);
+        layout->addWidget(okButton, 0, Qt::AlignCenter);
+        
+        aboutDialog->exec();
     });
 }
 
