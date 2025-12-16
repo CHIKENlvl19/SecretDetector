@@ -1,0 +1,74 @@
+FROM ubuntu:22.04
+
+# Отключить интерактивные запросы
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Установить все зависимости (build + runtime + Qt5)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    pkg-config \
+    nlohmann-json3-dev \
+    libpcre2-dev \
+    libspdlog-dev \
+    qtbase5-dev \
+    qttools5-dev \
+    libqt5gui5 \
+    libqt5widgets5 \
+    libqt5core5a \
+    libgl1-mesa-glx \
+    libxcb-xinerama0 \
+    libxkbcommon-x11-0 \
+    libxcb-cursor0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render-util0 \
+    libxcb-shape0 \
+    dbus-x11 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Скопировать и собрать
+WORKDIR /build
+COPY CMakeLists.txt ./
+COPY src/ ./src/
+COPY config/ ./config/
+
+# Собрать с GUI
+RUN mkdir -p build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_GUI=ON \
+          .. && \
+    make -j$(nproc) && \
+    strip secret_detector secret_detector_gui
+
+# Создать пользователя
+RUN useradd -m -u 1000 scanner && \
+    mkdir -p /app/config /scan /reports && \
+    chown -R scanner:scanner /app /scan /reports
+
+# Установить бинарники
+RUN cp build/secret_detector /app/ && \
+    cp build/secret_detector_gui /app/ && \
+    cp config/patterns.json /app/config/ && \
+    chown -R scanner:scanner /app
+
+WORKDIR /app
+USER scanner
+
+# Volumes
+VOLUME ["/scan", "/reports"]
+
+# Переменные окружения для Qt
+ENV QT_X11_NO_MITSHM=1
+ENV QT_DEBUG_PLUGINS=0
+
+# Entrypoint для GUI
+ENTRYPOINT ["/app/secret_detector_gui"]
+
+# Метаданные
+LABEL maintainer="Berdnikov Alexey"
+LABEL version="1.0.0"
+LABEL description="Secret Detector GUI - Find secrets in your code"

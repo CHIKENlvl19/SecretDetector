@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
     qRegisterMetaType<ScanResult>("ScanResult");
     qRegisterMetaType<ScanStatistics>("ScanStatistics");
 
+    // главное окно программы
     MainWindow window;
     window.show();
 

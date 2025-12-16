@@ -1,6 +1,71 @@
+# Build artifacts (ВАЖНО: НЕ исключать CMakeLists.txt!)
 build/
-.git/
+build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*_autogen/
 *.o
-*.log
-report.*
+*.a
+*.so
+*.dylib
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+README*.md
+
+# Images
+*.jpg
+*.png
+*.gif
+*.ico
+*.svg
+
+# Archives
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+
+# Installer
+installer/
+*.run
+*.deb
+
+# Reports
+reports/
+*.json
+*.csv
+*.html
+
+# Test files
 test_secrets.cpp
+old_patterns.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# ВАЖНО: НЕ исключать эти файлы!
+# !CMakeLists.txt  - не нужно, если нет паттерна CMake*
+# !src/
+# !config/

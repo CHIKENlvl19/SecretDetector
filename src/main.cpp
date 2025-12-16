@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-// цветастый вывод типа гыгыг
+// цветной вывод
 const char* RED = "\033[1;31m";
 const char* GREEN = "\033[1;32m";
 const char* YELLOW = "\033[1;33m";
@@ -44,7 +44,7 @@ void printSummary(const ScanResult& result, bool strict_mode) {
 
     std::cout << "\n" << BLUE << std::string(50, '=') << RESET << "\n";
 
-    // код выхода короче, вроде используется, не помню
+    // код выхода
     int exit_code = 0;
     if (result.has_critical || (strict_mode && result.statistics.total_matches_found > 0)) {
         std::cout << RED << "SCAN FAILED: Secrets detected!" << RESET << "\n";
@@ -62,7 +62,7 @@ void printSummary(const ScanResult& result, bool strict_mode) {
 
     std::cout << "\n";
 
-    // топ пьять машин
+    // топ находок
     if (!result.matches.empty()) {
         std::cout << BLUE << "TOP FINDINGS (max 10):" << RESET << "\n";
         int count = 0;
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
     // парсинг аргуметов ввода
     CLIOptions options = CLIParser::parse(argc, argv);
 
-    // памагити
+    // справка
     if (options.help) {
         CLIParser::printHelp();
         return 0;
@@ -94,7 +94,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // логгер тоже нужен, крутой чтобы ю ноу
+    // логгер
     spdlog::level::level_enum log_level = options.verbose 
         ? spdlog::level::debug 
         : spdlog::level::info;
@@ -111,14 +111,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // собсна детектор
+    // сам детектор
     SecretDetector detector;
 
     std::string config_path = options.config_path.empty() 
         ? "/etc/secret_detector/patterns.json" 
         : options.config_path;
 
-    // ищем конФИГ где только можно
+    // поиск конфига
     if (!FileUtils::fileExists(config_path)) {
         std::vector<std::string> possible_paths = {
             "/etc/secret_detector/patterns.json",
@@ -154,20 +154,20 @@ int main(int argc, char* argv[]) {
     scan_options.exclude_patterns = options.exclude_patterns;
     scan_options.include_extensions = options.include_extensions;
 
-    // прогресс!
+    // прогресс сканирования
     detector.setProgressCallback([](size_t current, size_t total) {
         int percent = (current * 100) / total;
         std::cout << "\rProgress: " << current << "/" << total 
                  << " (" << percent << "%)" << std::flush;
     });
 
-    // поихали!!!
+    // начало сканирования
     LOG_INFO("Starting scan...");
     ScanResult result = detector.scan(scan_options);
 
-    std::cout << "\r" << std::string(50, ' ') << "\r"; // Clear progress line
+    std::cout << "\r" << std::string(50, ' ') << "\r"; // очистка линии прогресса
 
-    // экспорт отчетика
+    // экспорт отчета
     if (!options.output_path.empty()) {
         LOG_INFO_FMT("Exporting results to: {}", options.output_path);
 
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
                          << "\"" << match.preview << "\"\n";
             }
         } else {
-            // текстовый формат по дефолту
+            // текстовый формат по умолчанию
             if (!result.matches.empty()) {
                 std::cout << "\nMatches found:\n";
                 for (const auto& match : result.matches) {
@@ -220,11 +220,11 @@ int main(int argc, char* argv[]) {
     // заключение
     printSummary(result, options.strict);
 
-    // код возврата собсна
+    // код возврата
     if (result.has_critical) {
-        return 1; // ойой плохи дела
+        return 1;
     } else if (options.strict && result.statistics.total_matches_found > 0) {
-        return 1; // ну это для ЖОСКОГО режима, если стоит, то сразу бабай сигма 100090%
+        return 1;
     }
 
     return 0;
