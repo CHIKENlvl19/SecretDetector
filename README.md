@@ -62,7 +62,7 @@ sudo apt install -y build-essential cmake git nlohmann-json3-dev libpcre2-dev li
 Clone the repository and build in a separate `build` directory:
 
 ```bash
-git clone https://github.com/<your-username>/SecretDetector.git
+git clone https://github.com/CHIKENlvl19/SecretDetector.git
 cd SecretDetector
 mkdir -p build
 cd build
@@ -189,6 +189,7 @@ After building with GUI support:
 cd build
 ./secret_detector_gui
 ```
+Or just open Secret Detector directly from your app menu.
 
 ### Main workflow
 
