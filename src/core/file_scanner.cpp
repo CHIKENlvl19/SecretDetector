@@ -159,7 +159,7 @@ bool FileScanner::shouldScanFile(const std::string& file_path) const {
         // аудио
         ".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".wma", ".opus",
         
-        // документы (офисные форматы - бинарные оказывается)
+        // документы (офисные форматы - бинарные)
         ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
         ".odt", ".ods", ".odp", ".pages", ".numbers", ".key",
         

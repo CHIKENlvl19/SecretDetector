@@ -122,9 +122,8 @@ std::vector<Match> PatternMatcher::findMatches(const std::string& content,
         }
     }
     
-    // отрубить энтропию
+    // отключить энтропию, пока что
     /*
-    // Применить энтропию ТОЛЬКО если use_entropy = true
     for (const auto& pattern : patterns) {
         if (pattern.use_entropy) {
             // Код энтропии

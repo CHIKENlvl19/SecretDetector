@@ -333,7 +333,7 @@ void MainWindow::onScanClicked() {
         return;
     }
     
-    // КРИТИЧЕСКАЯ ПРОВЕРКА - ПРЕДОТВРАЩАЕТ КРАШ, НЕ ДАЙ БОГ НЕ СРАБОТАЕТ, Я НЕ ЗНАЮ УЖЕ ЧТО С СОБОЙ СДЕЛАЮ
+    // КРИТИЧЕСКАЯ ПРОВЕРКА - ПРЕДОТВРАЩАЕТ КРАШ
     if (scanThread) {
         if (scanThread->isRunning()) {
             QMessageBox::warning(this, "Scan in Progress", 
@@ -374,7 +374,7 @@ void MainWindow::onScanClicked() {
     scanBtn->setEnabled(false);
     stopBtn->setEnabled(true);
     
-    // КРИТИЧЕСКИ ВАЖНО - ОТКЛЮЧИТЬ TOOLBAR КНОПКИ А ТО ОПЯТЬ КРАШНЕТСЯ ВСЁ НУ СКОКА МОЖНО
+    // КРИТИЧЕСКИ ВАЖНО - ОТКЛЮЧИТЬ TOOLBAR КНОПКИ
     toolbarScanAction->setEnabled(false);
     toolbarStopAction->setEnabled(true);
     
@@ -412,7 +412,7 @@ void MainWindow::onStopClicked() {
         scanBtn->setEnabled(true);
         stopBtn->setEnabled(false);
         
-        // ВКЛЮЧИТЬ TOOLBAR КНОПКИ А ТО Ж НЕ ВИДНО ИХ БУДЕТ
+        // ВКЛЮЧИТЬ TOOLBAR КНОПКИ
         toolbarScanAction->setEnabled(true);
         toolbarStopAction->setEnabled(false);
         
@@ -523,11 +523,11 @@ void MainWindow::onScanFinished(const ScanResult& result) {
     lastResult = result;
     scanning = false;
     
-    // ВКЛЮЧИТЬ КНОПКИ ОБРАТНО НУ КОНЕЧНО МЫ ЖЕ ИХ ВЫРУБИЛИ
+    // ВКЛЮЧИТЬ КНОПКИ ОБРАТНО
     scanBtn->setEnabled(true);
     stopBtn->setEnabled(false);
     
-    // КРИТИЧЕСКИ ВАЖНО - ВКЛЮЧИТЬ TOOLBAR КНОПКИ ААААААААААААААА
+    // КРИТИЧЕСКИ ВАЖНО - ВКЛЮЧИТЬ TOOLBAR КНОПКИ
     toolbarScanAction->setEnabled(true);
     toolbarStopAction->setEnabled(false);
     
@@ -539,10 +539,10 @@ void MainWindow::onScanFinished(const ScanResult& result) {
     loadResults(result);
     updateStatistics(result.statistics);
     
-    // КРИТИЧЕСКИ ВАЖНО - ОБНУЛИТЬ УКАЗАТЕЛЬ НУ ЭТО ТОЖЕ ТИПА ЛОМАЕТ 
+    // КРИТИЧЕСКИ ВАЖНО - ОБНУЛИТЬ УКАЗАТЕЛЬ
     scanThread = nullptr;
     
-    // показать уведомление посмотри тебе пришло важное сообщение
+    // показать уведомление
     if (result.has_critical) {
         QMessageBox::critical(this, "Critical Secrets Found",
             QString("Found %1 CRITICAL secrets!\nPlease review the results.")
@@ -586,7 +586,7 @@ void MainWindow::loadResults(const ScanResult& result) {
             .arg(result.matches.size()).arg(max_display));
     }
     
-    resultsTable->setUpdatesEnabled(false);  // отключить обновление для скорости, а то оператива дорогая щас
+    resultsTable->setUpdatesEnabled(false);  // отключить обновление для скорости
     
     for (size_t i = 0; i < display_count; ++i) {
         const Match& match = result.matches[i];
@@ -621,7 +621,7 @@ void MainWindow::loadResults(const ScanResult& result) {
         resultsTable->setItem(row, 5, previewItem);
     }
     
-    resultsTable->setUpdatesEnabled(true);  // включить обратно :)))))
+    resultsTable->setUpdatesEnabled(true);  // включить обратно
     resultsTable->resizeColumnsToContents();
 }
 
