@@ -121,10 +121,7 @@ int main(int argc, char* argv[]) {
     // поиск конфига
     if (!FileUtils::fileExists(config_path)) {
         std::vector<std::string> possible_paths = {
-            "/etc/secret_detector/patterns.json",
-            "/usr/local/etc/secret_detector/patterns.json",
-            "./config/patterns.json",
-            "../config/patterns.json",
+            "/opt/secret-detector/config/patterns.json"
         };
 
         config_path = "";

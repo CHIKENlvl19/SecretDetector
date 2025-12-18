@@ -34,7 +34,7 @@ private:
     static std::shared_ptr<spdlog::logger> instance;
 };
 
-// Удобные макросы
+// удобные макросы
 #define LOG_INFO(msg) Logger::getInstance()->info(msg)
 #define LOG_DEBUG(msg) Logger::getInstance()->debug(msg)
 #define LOG_WARN(msg) Logger::getInstance()->warn(msg)

@@ -59,7 +59,7 @@ std::string FileUtils::getFileExtension(const std::string& file_path) {
     size_t dot_pos = file_path.find_last_of('.');
     if (dot_pos != std::string::npos && dot_pos != file_path.length() - 1) {
         std::string ext = file_path.substr(dot_pos + 1);
-        // Lowercase
+        // нижний регистр
         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
         return ext;
     }
