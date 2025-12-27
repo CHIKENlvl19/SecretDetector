@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # CLI версия (основная)
+  secret-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: secret-detector:latest
+    container_name: secret-detector-cli
+    volumes:
+      # Сканируемая директория
+      - ./:/scan:ro
+      # Директория для отчетов
+      - ./reports:/reports:rw
+    command: >
+      /scan
+      --recursive
+      --respect-gitignore
+      --output /reports/report.json
+      --format json
+    user: "1000:1000"
+    restart: "no"
+
+  # GUI версия (для Linux с X11)
+  secret-detector-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile.gui
+    image: secret-detector-gui:latest
+    container_name: secret-detector-gui
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp/runtime-scanner}
+    volumes:
+      # X11 socket для GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Сканируемая директория
+      - ./:/scan:rw
+      # Директория для отчетов
+      - ./reports:/reports:rw
+      # Сохранение настроек
+      - gui-settings:/home/scanner/.config
+    network_mode: host
+    user: "1000:1000"
+    restart: "no"
+
+volumes:
+  gui-settings:
+    driver: local
